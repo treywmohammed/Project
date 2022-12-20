@@ -1,0 +1,116 @@
+
+-- Looking at Total Cases vs. Total Deaths
+-- Filtered by United States
+
+SELECT location, date, total_cases, total_deaths, (total_deaths / total_cases) * 100 AS DeathPercent 
+FROM `lunar-mission-370018.Practice.Deaths`
+where location like '%States%'
+order by 1,2
+
+-- Looking at Total Cases vs. Population
+-- Shows percentage of Population got Covid in the United States
+
+SELECT location, date, population, total_cases, (total_cases / population) * 100 AS PercentPopulationInfected 
+FROM `lunar-mission-370018.Practice.Deaths`
+where location like '%States%'
+order by 1,2
+
+-- Looking at Countries with highest infection rate compared to population
+
+SELECT location, population, MAX(total_cases) AS Highest_Cases, MAX((total_cases / population)) * 100 AS PercentPopulationInfected 
+FROM `lunar-mission-370018.Practice.Deaths`
+-- where location like '%States%'
+GROUP BY location, population
+order by PercentPopulationInfected desc
+
+
+-- Looking at Counties with highest death count per population
+SELECT location, MAX(total_deaths) AS TotalDeathCount
+FROM `lunar-mission-370018.Practice.Deaths`
+-- where location like '%States%'
+GROUP BY location
+order by TotalDeathCount desc
+
+-- Breaking it down by Continent
+
+SELECT continent, MAX(total_deaths) AS TotalDeathCount
+FROM `lunar-mission-370018.Practice.Deaths`
+where continent is not NULL
+GROUP BY continent
+order by TotalDeathCount desc
+
+-- Showing continents with Highest Dealth Count per population
+
+SELECT continent, MAX(total_deaths) AS TotalDeathCount
+FROM `lunar-mission-370018.Practice.Deaths`
+where continent is not NULL
+GROUP BY continent
+order by TotalDeathCount desc
+
+
+-- Looking for total vaccinations vs populations
+
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(CAST(vac.new_vaccinations as int)) OVER (partition by dea.location ORDER BY dea.location, dea.date) as RollingPeopleVaccinated
+FROM `lunar-mission-370018.Practice.Deaths` dea
+JOIN `lunar-mission-370018.Practice.Vaccinations` vac
+on dea.location = vac.location
+and dea.date = vac.date
+where dea.continent is not NULL
+order by dea.location , dea.date
+
+--CTE Not Working
+
+WITH
+PopVsVac (continent, location, date, population, new_vaccinations, RollingPeopleVaccinated)
+AS
+
+
+(
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(CAST(vac.new_vaccinations as int)) OVER (partition by dea.location ORDER BY dea.location, dea.date) as RollingPeopleVaccinated
+FROM `lunar-mission-370018.Practice.Deaths` dea
+JOIN `lunar-mission-370018.Practice.Vaccinations` vac
+on dea.location = vac.location
+and dea.date = vac.date
+where dea.continent is not NULL
+-- order by dea.location , dea.date
+)
+
+
+SELECT *
+FROM PopVsVac
+
+-- Temp Table
+
+CREATE TABLE #PercentPopulationVaccinated
+(
+  continent nvarchar(255),
+  Location nvarchar(255),
+  Date datetime,
+  population numeric,
+  new_vaccination numeric,
+  RollingPeopleVaccinated numeric
+
+)
+
+
+INSERT INTO #PercentPopulationVaccinated
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(CAST(vac.new_vaccinations as int)) OVER (partition by dea.location ORDER BY dea.location, dea.date) as RollingPeopleVaccinated
+FROM `lunar-mission-370018.Practice.Deaths` dea
+JOIN `lunar-mission-370018.Practice.Vaccinations` vac
+on dea.location = vac.location
+and dea.date = vac.date
+where dea.continent is not NULL
+-- order by dea.location , dea.date
+
+
+-- Creating View to store data for later 
+
+CREATE VIEW PercentPopulationVaccinated as
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(CAST(vac.new_vaccinations as int)) OVER (partition by dea.location ORDER BY dea.location, dea.date) as RollingPeopleVaccinated
+FROM `lunar-mission-370018.Practice.Deaths` dea
+JOIN `lunar-mission-370018.Practice.Vaccinations` vac
+on dea.location = vac.location
+and dea.date = vac.date
+where dea.continent is not NULL
+
+
